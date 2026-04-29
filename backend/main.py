@@ -5,6 +5,8 @@ from pydantic import BaseModel
 import pandas as pd
 import os
 from dotenv import load_dotenv
+from datetime import datetime
+from typing import List, Optional
 
 from langchain_groq import ChatGroq
 from langgraph.prebuilt import create_react_agent
@@ -23,12 +25,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory storage for uploaded data
-in_memory_data = []
+CSV_FILE = os.path.join(os.path.dirname(__file__), "data.csv")
+
+def load_data():
+    if not os.path.exists(CSV_FILE):
+        return pd.DataFrame(columns=[
+            "employee_id", "easy_tasks", "medium_tasks", "hard_tasks",
+            "context_switches", "work_hours", "after_hours_work", "weekend_work", "last_updated"
+        ])
+    return pd.read_csv(CSV_FILE)
+
+def save_data(df):
+    df.to_csv(CSV_FILE, index=False)
+
+class EmployeeSubmission(BaseModel):
+    employee_id: int
+    easy_tasks: int
+    medium_tasks: int
+    hard_tasks: int
+    context_switches: int
+    work_hours: float
+    after_hours_work: float
+    weekend_work: bool
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
-    global in_memory_data
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are allowed.")
     
@@ -45,26 +66,26 @@ async def upload_file(file: UploadFile = File(...)):
         if missing_columns:
             raise HTTPException(status_code=400, detail=f"Missing columns: {', '.join(missing_columns)}")
             
-        in_memory_data = df.to_dict(orient="records")
-        return {"message": "File uploaded successfully", "records": len(in_memory_data)}
+        if "last_updated" not in df.columns:
+            df["last_updated"] = datetime.now().strftime("%Y-%m-%d")
+            
+        save_data(df)
+        return {"message": "File uploaded and saved successfully", "records": len(df)}
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error reading file: {str(e)}")
 
-def get_employee_data():
-    if not in_memory_data:
-        raise HTTPException(status_code=400, detail="No data uploaded")
-    return in_memory_data
-
 def calculate_burnout_risk(emp):
-    easy = emp["easy_tasks"]
-    medium = emp["medium_tasks"]
-    hard = emp["hard_tasks"]
-    context_switches = emp["context_switches"]
-    work_hours = emp["work_hours"]
-    after_hours_work = emp["after_hours_work"]
-    weekend_work = emp["weekend_work"]
+    # Support both dict (from records) and Series (from pandas)
+    easy = int(emp["easy_tasks"])
+    medium = int(emp["medium_tasks"])
+    hard = int(emp["hard_tasks"])
+    context_switches = int(emp["context_switches"])
+    work_hours = float(emp["work_hours"])
+    after_hours_work = float(emp["after_hours_work"])
+    weekend_work = bool(emp["weekend_work"])
+    last_updated = emp.get("last_updated", "N/A")
 
     # Weighted Workload Logic
     workload = easy * 1 + medium * 2 + hard * 3
@@ -120,7 +141,7 @@ def calculate_burnout_risk(emp):
         recommendations.append("Continue current work patterns")
 
     return {
-        "employee_id": emp["employee_id"],
+        "employee_id": int(emp["employee_id"]),
         "easy_tasks": easy,
         "medium_tasks": medium,
         "hard_tasks": hard,
@@ -129,39 +150,78 @@ def calculate_burnout_risk(emp):
         "risk_score": risk_score,
         "risk_level": risk_level,
         "reasons": reasons,
-        "recommendations": recommendations
+        "recommendations": recommendations,
+        "last_updated": last_updated
     }
+
+@app.post("/submit")
+async def submit_daily_data(submission: EmployeeSubmission):
+    df = load_data()
+    
+    new_record = submission.dict()
+    new_record["last_updated"] = datetime.now().strftime("%Y-%m-%d")
+    
+    # Check if entry for this employee and date already exists, if so update it
+    mask = (df["employee_id"] == submission.employee_id) & (df["last_updated"] == new_record["last_updated"])
+    if mask.any():
+        for col, val in new_record.items():
+            df.loc[mask, col] = val
+    else:
+        df = pd.concat([df, pd.DataFrame([new_record])], ignore_index=True)
+    
+    save_data(df)
+    
+    analysis = calculate_burnout_risk(new_record)
+    return analysis
+
+@app.get("/latest")
+def get_latest_data():
+    df = load_data()
+    if df.empty:
+        return []
+    
+    # Sort by date and drop duplicates to keep latest per employee
+    df["last_updated"] = pd.to_datetime(df["last_updated"])
+    latest_df = df.sort_values("last_updated", ascending=False).drop_duplicates("employee_id")
+    
+    # Optional: convert back to string
+    latest_df["last_updated"] = latest_df["last_updated"].dt.strftime("%Y-%m-%d")
+    
+    results = [calculate_burnout_risk(row) for _, row in latest_df.iterrows()]
+    return results
 
 @app.get("/analyze_all")
 def analyze_all():
-    employees = get_employee_data()
-    results = [calculate_burnout_risk(emp) for emp in employees]
-    return results
+    return get_latest_data()
 
 @app.get("/analyze/{employee_id}")
 def analyze_one(employee_id: int):
-    employees = get_employee_data()
-    for emp in employees:
-        if emp["employee_id"] == employee_id:
-            return calculate_burnout_risk(emp)
-    raise HTTPException(status_code=404, detail="Employee not found")
+    df = load_data()
+    emp_data = df[df["employee_id"] == employee_id]
+    if emp_data.empty:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    # Get the latest entry
+    emp_data["last_updated"] = pd.to_datetime(emp_data["last_updated"])
+    latest = emp_data.sort_values("last_updated", ascending=False).iloc[0]
+    return calculate_burnout_risk(latest)
 
 # LangChain Agent Setup
 @tool
 def analyze_employee(employee_id: int) -> str:
     """Analyze an employee's burnout risk given their employee ID."""
-    employees = get_employee_data()
-    for emp in employees:
-        if emp["employee_id"] == employee_id:
-            res = calculate_burnout_risk(emp)
-            return (
-                f"Employee ID: {res['employee_id']}\n"
-                f"Workload Score: {res['workload_score']}\n"
-                f"Risk Score: {res['risk_score']} ({res['risk_level']} Risk)\n"
-                f"Reasons: {', '.join(res['reasons'])}\n"
-                f"Recommendations: {', '.join(res['recommendations'])}"
-            )
-    return "Employee not found."
+    try:
+        res = analyze_one(employee_id)
+        return (
+            f"Employee ID: {res['employee_id']}\n"
+            f"Workload Score: {res['workload_score']}\n"
+            f"Risk Score: {res['risk_score']} ({res['risk_level']} Risk)\n"
+            f"Reasons: {', '.join(res['reasons'])}\n"
+            f"Recommendations: {', '.join(res['recommendations'])}\n"
+            f"Last Entry Date: {res['last_updated']}"
+        )
+    except HTTPException:
+        return "Employee not found."
 
 class ChatRequest(BaseModel):
     query: str
@@ -173,17 +233,15 @@ async def chat_with_agent(request: ChatRequest):
         raise HTTPException(status_code=500, detail="GROQ_API_KEY not configured in .env file.")
 
     try:
-        # Provide a high-level summary instead of the full dataset to save tokens
         system_prompt = f"""You are an expert HR assistant specializing in employee burnout risk analysis.
 
 === INSTRUCTIONS ===
 1. If the query mentions a specific employee ID (e.g., #1 or Employee 1), you MUST use the 'analyze_employee' tool immediately to fetch their specific data.
 2. Focus EXCLUSIVELY on the employee requested. Do not provide a general team summary unless specifically asked.
-3. Based on the tool's output, provide exactly 5 HIGHLY SPECIFIC and ACTIONABLE recommendations tailored to that employee's risk factors (e.g., if they work weekends, mention weekends; if they have high context switches, address that).
+3. Based on the tool's output, provide exactly 5 HIGHLY SPECIFIC and ACTIONABLE recommendations tailored to that employee's risk factors.
 4. Do not invent data. Use only the tool output.
 5. Format your response professionally with a numbered list for recommendations."""
 
-        # Using llama-3.1-8b-instant for reliability and speed
         llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0, api_key=groq_api_key)
         tools = [analyze_employee]
         
@@ -196,7 +254,6 @@ async def chat_with_agent(request: ChatRequest):
             ]
         })
         
-        # Extract the final AI message content
         ai_message = response["messages"][-1].content
         return {"response": ai_message}
     except Exception as e:
