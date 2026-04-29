@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, SortAsc, SortDesc, ShieldAlert, CheckCircle2, AlertTriangle, Send, Loader2 } from 'lucide-react';
+import { Search, SortAsc, SortDesc, ShieldAlert, CheckCircle2, AlertTriangle, Send, Loader2, Upload } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import ReactMarkdown from 'react-markdown';
 
@@ -19,15 +19,60 @@ function App() {
   const [chatInput, setChatInput] = useState('');
   const [loadingChat, setLoadingChat] = useState(false);
 
+  // Upload state
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const fetchAllEmployees = async () => {
+    try {
+      const res = await fetch('http://localhost:8000/analyze_all');
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 400 && data.detail === "No data uploaded") {
+          setEmployees([]);
+          setFilteredEmployees([]);
+          return;
+        }
+        throw new Error(data.detail || 'Failed to fetch');
+      }
+      setEmployees(data);
+      handleSortAndFilter(data, search, sortDesc);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
-    fetch('http://localhost:8000/analyze_all')
-      .then(res => res.json())
-      .then(data => {
-        setEmployees(data);
-        handleSortAndFilter(data, search, sortDesc);
-      })
-      .catch(err => console.error(err));
+    fetchAllEmployees();
   }, []);
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('http://localhost:8000/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Upload failed');
+      
+      alert(data.message);
+      await fetchAllEmployees();
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   const handleSortAndFilter = (data, searchVal, isDesc) => {
     let filtered = data.filter(e => e.employee_id.toString().includes(searchVal));
@@ -110,21 +155,41 @@ function App() {
       <div className="dashboard-layout">
         <div className="main-panel">
           <div className="glass-panel" style={{ marginBottom: '2rem' }}>
-            <div className="controls-bar">
+            <div className="controls-bar" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
               <input
                 type="text"
                 placeholder="Search Employee ID..."
                 className="search-input"
                 value={search}
                 onChange={handleSearch}
+                style={{ flex: 1 }}
               />
-              <button className="btn" onClick={toggleSort}>
-                {sortDesc ? <SortDesc size={18} /> : <SortAsc size={18} />}
-                Sort by Risk
-              </button>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input 
+                  type="file" 
+                  accept=".csv" 
+                  style={{ display: 'none' }} 
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                />
+                <button className="btn" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                  {uploading ? <Loader2 size={18} className="spin-icon" /> : <Upload size={18} />}
+                  Upload CSV
+                </button>
+                <button className="btn" onClick={toggleSort}>
+                  {sortDesc ? <SortDesc size={18} /> : <SortAsc size={18} />}
+                  Sort
+                </button>
+              </div>
             </div>
 
             <div className="table-container">
+              {employees.length === 0 ? (
+                <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
+                  <Upload size={48} style={{ opacity: 0.5, marginBottom: '1rem' }} />
+                  <p style={{ fontSize: '1.1rem' }}>No data available. Please upload an employee CSV file to begin analysis.</p>
+                </div>
+              ) : (
               <table>
                 <thead>
                   <tr>
@@ -156,6 +221,7 @@ function App() {
                   ))}
                 </tbody>
               </table>
+              )}
             </div>
           </div>
 

@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+import io
 from pydantic import BaseModel
 import pandas as pd
 import os
@@ -22,12 +23,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load data
-DATA_FILE = "data.csv"
+# In-memory storage for uploaded data
+in_memory_data = []
+
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    global in_memory_data
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Only CSV files are allowed.")
+    
+    try:
+        content = await file.read()
+        df = pd.read_csv(io.BytesIO(content))
+        
+        required_columns = [
+            "employee_id", "easy_tasks", "medium_tasks", "hard_tasks",
+            "context_switches", "work_hours", "after_hours_work", "weekend_work"
+        ]
+        
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            raise HTTPException(status_code=400, detail=f"Missing columns: {', '.join(missing_columns)}")
+            
+        in_memory_data = df.to_dict(orient="records")
+        return {"message": "File uploaded successfully", "records": len(in_memory_data)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error reading file: {str(e)}")
 
 def get_employee_data():
-    df = pd.read_csv(DATA_FILE)
-    return df.to_dict(orient="records")
+    if not in_memory_data:
+        raise HTTPException(status_code=400, detail="No data uploaded")
+    return in_memory_data
 
 def calculate_burnout_risk(emp):
     easy = emp["easy_tasks"]
