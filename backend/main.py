@@ -173,42 +173,18 @@ async def chat_with_agent(request: ChatRequest):
         raise HTTPException(status_code=500, detail="GROQ_API_KEY not configured in .env file.")
 
     try:
-        # Build full dataset context for the model
-        employees = get_employee_data()
-        all_analysis = [calculate_burnout_risk(emp) for emp in employees]
-
-        dataset_summary = "=== COMPLETE EMPLOYEE DATASET ===\n"
-        for emp, analysis in zip(employees, all_analysis):
-            total_tasks = emp["easy_tasks"] + emp["medium_tasks"] + emp["hard_tasks"]
-            dataset_summary += (
-                f"\nEmployee #{emp['employee_id']}:\n"
-                f"  Tasks — Easy: {emp['easy_tasks']}, Medium: {emp['medium_tasks']}, Hard: {emp['hard_tasks']} (Total: {total_tasks})\n"
-                f"  Work Hours/Day: {emp['work_hours']}, After-Hours: {emp['after_hours_work']} hrs, Weekend Work: {emp['weekend_work']}\n"
-                f"  Context Switches: {emp['context_switches']}\n"
-                f"  Workload Score: {analysis['workload_score']}, Risk Score: {analysis['risk_score']} ({analysis['risk_level']} Risk)\n"
-                f"  Reasons: {', '.join(analysis['reasons'])}\n"
-                f"  Recommendations: {', '.join(analysis['recommendations'])}\n"
-            )
-
+        # Provide a high-level summary instead of the full dataset to save tokens
         system_prompt = f"""You are an expert HR assistant specializing in employee burnout risk analysis.
 
-You have access to the complete employee dataset below. Use this data to answer questions accurately.
-NEVER invent or fabricate data — only use what is provided.
-
-{dataset_summary}
-
 === INSTRUCTIONS ===
-When asked about a specific employee or the team:
-1. Analyze their workload (weighted score from easy/medium/hard tasks), working hours, after-hours work, weekend work, and context switches.
-2. Always provide exactly 5 actionable recommendations based on:
-   - Workload distribution (number and difficulty of tasks)
-   - Time spent (work hours, after-hours, weekend work)
-   - Task volume and context switching patterns
-3. Be professional, concise, and data-driven in your responses.
-4. Format recommendations as a numbered list.
-5. If comparing employees, highlight key differences in workload and time patterns."""
+1. If the query mentions a specific employee ID (e.g., #1 or Employee 1), you MUST use the 'analyze_employee' tool immediately to fetch their specific data.
+2. Focus EXCLUSIVELY on the employee requested. Do not provide a general team summary unless specifically asked.
+3. Based on the tool's output, provide exactly 5 HIGHLY SPECIFIC and ACTIONABLE recommendations tailored to that employee's risk factors (e.g., if they work weekends, mention weekends; if they have high context switches, address that).
+4. Do not invent data. Use only the tool output.
+5. Format your response professionally with a numbered list for recommendations."""
 
-        llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0, api_key=groq_api_key)
+        # Using llama-3.1-8b-instant for reliability and speed
+        llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0, api_key=groq_api_key)
         tools = [analyze_employee]
         
         agent_executor = create_react_agent(llm, tools)
