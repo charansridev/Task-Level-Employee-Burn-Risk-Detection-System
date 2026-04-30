@@ -1,8 +1,8 @@
-# High-Level Design (HLD) - Google Stitch (Burnout Risk Analyzer)
+# High-Level Design (HLD) - RiskIntel
 
 ## 1. Introduction
 ### 1.1 Purpose
-This document outlines the High-Level Design (HLD) for the **Google Stitch (Burnout Risk Analyzer)** project. It serves as a comprehensive guide for developers, stakeholders, and HR managers to understand the system's architecture, components, and data flow.
+This document outlines the High-Level Design (HLD) for the **RiskIntel** project. It serves as a comprehensive guide for developers, stakeholders, and HR managers to understand the system's architecture, components, and data flow.
 
 ### 1.2 Scope
 The system evaluates employee task data, working hours, and context-switching metrics to predict burnout risk using a scoring model. Additionally, it features an interactive, AI-driven chatbot powered by LangChain and the Groq LLM to deliver actionable recommendations for workload management.
@@ -26,7 +26,7 @@ The system evaluates employee task data, working hours, and context-switching me
 HR teams currently lack data-driven tools to preemptively identify employee burnout. Traditional methods rely on manual spreadsheet analysis or subjective surveys, resulting in delayed interventions and decreased employee well-being.
 
 ### 2.2 Proposed Solution
-Google Stitch acts as an AI-powered portal that ingests employee workload data, calculates objective burnout risk scores, and offers dynamic mitigation strategies via an interactive AI assistant.
+RiskIntel acts as an AI-powered portal that ingests employee workload data, calculates objective burnout risk scores, and offers dynamic mitigation strategies via an interactive AI assistant.
 
 ### 2.3 Goals & Objectives
 - Automate burnout risk detection using quantifiable workload metrics.

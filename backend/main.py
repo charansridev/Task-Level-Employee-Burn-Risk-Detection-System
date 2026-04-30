@@ -15,7 +15,7 @@ from langchain_core.tools import tool
 
 load_dotenv()
 
-app = FastAPI(title="Burnout Risk Analyzer API")
+app = FastAPI(title="RiskIntel API")
 
 app.add_middleware(
     CORSMiddleware,
