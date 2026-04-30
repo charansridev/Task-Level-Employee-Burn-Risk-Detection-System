@@ -1,176 +1,148 @@
-# High-Level Design (HLD) - RiskIntel (Burnout Risk Analyzer)
-
-## 1. Introduction
-### 1.1 Purpose
-This document outlines the High-Level Design (HLD) for the **Google Stitch (Burnout Risk Analyzer)** project. It serves as a comprehensive guide for developers, stakeholders, and HR managers to understand the system's architecture, components, and data flow.
-
-### 1.2 Scope
-The system evaluates employee task data, working hours, and context-switching metrics to predict burnout risk using a scoring model. Additionally, it features an interactive, AI-driven chatbot powered by LangChain and the Groq LLM to deliver actionable recommendations for workload management.
-
-### 1.3 Definitions, Acronyms, Abbreviations
-- **API**: Application Programming Interface
-- **LLM**: Large Language Model
-- **ML**: Machine Learning
-- **HR**: Human Resources
-- **ReAct**: Reason and Act (Agent framework)
-
-### 1.4 References
-- System Requirements Specification
-- `data.csv` (Employee dataset)
-- FastAPI and React project documentation
-
----
-
-## 2. System Overview
-### 2.1 Problem Statement
-HR teams currently lack data-driven tools to preemptively identify employee burnout. Traditional methods rely on manual spreadsheet analysis or subjective surveys, resulting in delayed interventions and decreased employee well-being.
-
-### 2.2 Proposed Solution
-Google Stitch acts as an AI-powered portal that ingests employee workload data, calculates objective burnout risk scores, and offers dynamic mitigation strategies via an interactive AI assistant.
-
-### 2.3 Goals & Objectives
-- Automate burnout risk detection using quantifiable workload metrics.
-- Provide clear, data-driven recommendations to reduce burnout.
-- Offer a conversational interface to seamlessly query employee wellness data.
-
-### 2.4 Assumptions & Constraints
-- **Tech Stack**: FastAPI (Backend), React (Frontend), LangChain/Groq (LLM).
-- **Constraints**: 
-  - Requires internet access for LLM external API calls.
-  - Core data is currently stored in a local CSV file, pending future database migration.
-
----
-
-## 3. System Architecture
-### 3.1 Architecture Diagram
-```mermaid
-graph TD
-    Browser[React Frontend UI] -->|REST API calls| Backend[FastAPI Backend]
-    Backend -->|Agentic Workflow| LLM[LangChain / Groq API]
-    Backend -->|Read Data| DB[(data.csv)]
-```
-
-### 3.2 Technology Stack
-- **Frontend**: React.js, Vite
-- **Backend**: FastAPI, Python, Pandas, Uvicorn
-- **AI**: LangChain, Groq API (llama-3.3-70b-versatile)
-
-### 3.3 Design Approach
-- **Client-Server Architecture**: Strict separation of concerns between the React user interface and the FastAPI backend.
-- **RESTful API**: Stateless API endpoints for fetching bulk analysis (`/analyze_all`) and individual records (`/analyze/{id}`).
-- **Agentic AI Pattern**: Implementation of a ReAct agent equipped with context-aware tools.
-
-### 3.4 Deployment View
-- **Local Machine Deployment**:
-  - Frontend hosted locally on port `5173`.
-  - Backend served via Uvicorn on port `8000`.
-
----
-
-## 4. Database Design
-*(Note: The system currently utilizes flat-file CSV storage. Below is the logical schema representation.)*
-
-### 4.1 ER Diagram
-```mermaid
-erDiagram
-    EMPLOYEE ||--|| BURNOUT_ANALYSIS : "generates"
-    EMPLOYEE {
-        int employee_id PK
-        int easy_tasks
-        int medium_tasks
-        int hard_tasks
-        int context_switches
-        float work_hours
-        float after_hours_work
-        boolean weekend_work
-    }
-    BURNOUT_ANALYSIS {
-        float workload_score
-        float risk_score
-        string risk_level
-        string[] reasons
-        string[] recommendations
-    }
-```
-
-### 4.2 Table Schema
-- **Employee**: `employee_id` (PK, Integer), `easy_tasks` (Integer), `medium_tasks` (Integer), `hard_tasks` (Integer), `context_switches` (Integer), `work_hours` (Float), `after_hours_work` (Float), `weekend_work` (Boolean).
-
-### 4.3 Data Dictionary
-- `employee_id`: Unique identifier assigned to each employee.
-- `context_switches`: Number of times an employee shifts focus between disparate tasks during a shift.
-- `workload_score`: A calculated metric weighting task volumes by difficulty.
-- `risk_score`: Heuristics/ML-predicted value indicating burnout severity.
-- `risk_level`: Categorical output (`Low`, `Medium`, `High`) derived from the risk score.
-
----
-
-## 5. Functional Flow
-### 5.1 Use Case Diagram
-- **Actors**: HR Admin / Manager
-- **Core Use Cases**:
-  1. View the complete team risk dashboard.
-  2. View detailed risk breakdown and metrics for a specific employee.
-  3. Chat with the AI assistant for customized team insights and recommendations.
-
-### 5.2 Activity Diagrams
-**Analyze Employee Flow**:
-1. Admin opens the dashboard in the browser.
-2. Frontend requests data via `/analyze_all`.
-3. Backend ingests `data.csv` and executes the `calculate_burnout_risk` pipeline.
-4. Data is weighted, inferenced, and returned to the UI.
-5. Admin views categorized risks.
-
-### 5.3 Sequence Diagrams
-**AI Chat Interaction**:
-```mermaid
-sequenceDiagram
-    participant Admin
-    participant ReactUI
-    participant FastAPI
-    participant LangChainAgent
-    participant GroqAPI
-
-    Admin->>ReactUI: Ask "Who needs workload redistribution?"
-    ReactUI->>FastAPI: POST /chat {query}
-    FastAPI->>LangChainAgent: Invoke Agent with System Prompt & Dataset context
-    LangChainAgent->>GroqAPI: Process Query & Tool Calls
-    GroqAPI-->>LangChainAgent: Generate Recommendations
-    LangChainAgent-->>FastAPI: Final AI Response Message
-    FastAPI-->>ReactUI: Return Response JSON
-    ReactUI-->>Admin: Display Markdown Message
-```
-
----
-
-## 6. Wireframes
-### User Interface Flow
-- **Dashboard View**: A grid or table displaying employees, highlighting their predicted Risk Level (color-coded).
-- **Detail Modal**: Selecting an employee reveals a detailed breakdown of their Workload Score, Reasons for burnout, and specific Mitigation Recommendations.
-- **AI Chat Panel**: A persistent chat interface where users can submit natural language queries to the LangChain agent for deeper analysis.
-
----
-
-## 7. Non-Functional Requirements
-### 7.1 Security
-- **API Protection**: Sensitive keys (`GROQ_API_KEY`) are managed via environment variables and never exposed to the client.
-- **Access Control**: CORS middleware is strictly configured to manage origin access.
-
-### 7.2 Scalability
-- **Current Limitation**: In-memory data processing limits horizontal scaling for massive datasets.
-- **Future Migration Path**: Transition from CSV to an RDBMS (e.g., PostgreSQL or SQLite) to handle concurrency.
-
-### 7.3 Usability
-- **Responsiveness**: The React frontend must adapt cleanly to different screen sizes.
-- **Clarity**: Complex AI outputs must be parsed into clean, readable Markdown format for the end user.
-
----
-
-## 8. Risks & Mitigation
-### Technical Risks
-- **Data Concurrency & File Locking**:
-  - *Risk*: Manual DB (CSV) does not natively handle concurrent read/writes.
-  - *Mitigation*: Planned architectural update to migrate to SQLite for built-in concurrency control.
-- **Third-Party API Dependency**:
-  - *Risk*: Dependency on the external Groq API subjects the app to rate limits and downtime.
-  - *Mitigation*: Implement robust error handling (`try/catch`) in the `/chat` endpoint to return graceful fallback messages.
+🚀 Burnout Risk Analyzer – High Level Technical Design (HLT)
+1. 📌 Overview
+The Burnout Risk Analyzer is a web-based system that detects early signs of employee burnout using task-level work patterns. It combines rule-based scoring, weighted workload modeling, and LLM-powered explanations to provide actionable insights.
+________________________________________
+2. 🎯 Objectives
+•	Detect burnout risk early using behavioral signals
+•	Provide explainable insights (not just scores)
+•	Enable managers and employees to take preventive action
+•	Demonstrate AI-assisted decision-making in workforce analytics
+________________________________________
+3. 🏗️ System Architecture
+Components:
+1.	Frontend (UI Layer)
+o	Displays employee risk data
+o	Shows workload, risk level, reasons, recommendations
+o	Allows selection of employees
+2.	Backend (FastAPI)
+o	Handles API requests
+o	Loads and processes CSV data
+o	Computes workload and risk scores
+3.	Data Layer
+o	CSV file (data.csv)
+o	Simulates enterprise task management data
+4.	AI Layer (LangChain + LLM)
+o	Wraps backend logic as a tool
+o	Enables natural language queries
+o	Generates explanations and suggestions
+________________________________________
+3.A 🧭 High-Level Architecture Flow
+[ User / Browser ]
+          |
+          v
+[ Frontend UI (React/HTML) ]
+          |
+          v
+[ FastAPI Backend ]
+   |        |        \
+   |        |         \
+   v        v          v
+[ CSV ]  [ Risk Engine ]  [ LangChain Tool ]
+             |                |
+             v                v
+        [ Scoring Logic ]  [ LLM (Optional) ]
+             |                |
+             \_______  ______/
+                     v
+               [ Response JSON ]
+                     |
+                     v
+              [ Frontend Display ]
+Explanation:
+•	The frontend sends requests to the backend APIs.
+•	The backend reads data from CSV and runs the burnout scoring logic.
+•	The LangChain tool optionally invokes an LLM for explanations.
+•	The system merges deterministic results + AI insights.
+•	Final response is returned to the frontend for visualization.
+________________________________________
+3.1 🧰 Libraries & Tools Used (and Why) 🧰 Libraries & Tools Used (and Why)
+Backend Framework
+•	FastAPI
+o	Chosen for: high performance, async support, automatic API documentation (Swagger)
+o	Why over Flask/Django: faster to build APIs, built-in validation using Pydantic, better for hackathons
+Data Processing
+•	pandas
+o	Used for: reading CSV, data manipulation, iteration
+o	Why over native Python: cleaner syntax, faster operations, easier handling of tabular data
+AI / LLM Layer
+•	LangChain
+o	Used for: creating tools, agents, and integrating LLM with backend logic
+o	Why: simplifies connecting LLM with custom functions (tool calling)
+•	LangChain Core
+o	Used for: prompt templates, message handling
+o	Why: modular architecture and better separation of concerns
+•	LangChain Groq
+o	Used for: connecting to Groq models
+o	Why: clean integration with minimal setup
+•	GROQ(llama-3.1-8b-instant)
+o	Used for: generating explanations and recommendations
+o	Why: strong reasoning capability, fast inference, cost-effective for demos
+Data Storage
+•	CSV File
+o	Used for: storing employee data
+o	Why over database: lightweight, no setup required, ideal for prototype/demo
+Frontend (Optional)
+•	React / HTML + JS
+o	Used for: UI dashboard
+o	Why: quick UI development, easy API integration
+________________________________________
+4. 🔄 Data Flow
+1.	User interacts with frontend
+2.	Frontend sends request to backend API
+3.	Backend processes CSV and calculates risk
+4.	Optional AI layer enhances response
+5.	Results returned to frontend
+________________________________________
+5. 📊 Data Model
+Each employee record contains:
+•	employee_id
+•	easy_tasks
+•	medium_tasks
+•	hard_tasks
+•	context_switches
+•	work_hours
+•	after_hours_work
+•	weekend_work
+________________________________________
+6. 🧮 Core Logic
+Workload Score = (easy × 1) + (medium × 2) + (hard × 3)
+Risk is calculated based on workload, context switching, working hours, and behavioral patterns.
+________________________________________
+7. 🧠 AI Integration
+LangChain agent calls a tool to analyze employee data and uses LLM to generate explanations.
+•	Prompts Used to achieve this:
+•	Core System Prompt (The Agent Persona)
+This is the foundational prompt injected into the Lang Chain React (Reason and Act) Agent running on the Groq LLM (Llama 3). It establishes the persona, strict constraints, and the expected output format.
+Text:
+You are an expert HR assistant specializing in employee burnout risk analysis.
+•	INSTRUCTIONS 
+•	1. If the query mentions a specific employee ID (e.g., #1 or Employee 1), you MUST use the 'analyze_employee' tool immediately to fetch their specific data.
+•	2. Focus EXCLUSIVELY on the employee requested. Do not provide a general team summary unless specifically asked.
+•	3. Based on the tool's output, provide exactly 5 HIGHLY SPECIFIC and ACTIONABLE recommendations tailored to that employee's risk factors.
+•	4. Do not invent data. Use only the tool output.
+•	5. Format your response professionally with a numbered list for recommendations.
+________________________________________
+8. 🔌 API Design
+•	GET /analyze_all
+•	GET /analyze/{id}
+________________________________________
+9. 💻 Frontend Design
+Dashboard showing employee risk levels and detailed analysis.
+________________________________________
+10. 🛡️ Assumptions & Constraints
+•	Synthetic data
+•	No real integrations
+•	Demo-focused system
+________________________________________
+11. ⚡ Non-Functional Requirements
+•	Fast
+•	Scalable
+•	Modular
+________________________________________
+12. 🚀 Future Enhancements
+•	Real integrations
+•	ML-based prediction
+•	Advanced dashboards
+________________________________________
+13. 🏁 Conclusion
+A practical system combining data processing, rule-based logic, and AI explanations for burnout detection.
