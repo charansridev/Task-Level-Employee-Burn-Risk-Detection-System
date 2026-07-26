@@ -3,6 +3,8 @@ import { Loader2, SortAsc, SortDesc, User, Briefcase, ChevronLeft, Send, Upload,
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import ReactMarkdown from 'react-markdown';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 // --- Home Component ---
 function Home({ onSelectRole }) {
   return (
@@ -66,7 +68,7 @@ function EmployeeDashboard({ onBack }) {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/submit', {
+      const res = await fetch(`${API_URL}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...formData, employee_id: parseInt(employeeId) })
@@ -261,7 +263,7 @@ function ManagerDashboard({ onBack }) {
 
   const fetchAllEmployees = async () => {
     try {
-      const res = await fetch('http://localhost:8000/latest');
+      const res = await fetch(`${API_URL}/latest`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Failed to fetch');
       setEmployees(data);
@@ -284,7 +286,7 @@ function ManagerDashboard({ onBack }) {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const res = await fetch('http://localhost:8000/upload', { method: 'POST', body: formData });
+      const res = await fetch(`${API_URL}/upload`, { method: 'POST', body: formData });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Upload failed');
       alert(data.message);
@@ -318,7 +320,7 @@ function ManagerDashboard({ onBack }) {
     setAiRecommendation('');
     setLoadingRec(true);
     try {
-      const res = await fetch('http://localhost:8000/chat', {
+      const res = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: `Give 5 detailed recommendations for employee ${employeeId} based on their workload and risk factors.` })
@@ -338,7 +340,7 @@ function ManagerDashboard({ onBack }) {
     setChatInput('');
     setLoadingChat(true);
     try {
-      const res = await fetch('http://localhost:8000/chat', {
+      const res = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: userMsg.text })
