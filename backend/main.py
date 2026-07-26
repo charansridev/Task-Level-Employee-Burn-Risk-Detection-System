@@ -25,18 +25,80 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-CSV_FILE = os.path.join(os.path.dirname(__file__), "data.csv")
+from sqlalchemy import create_engine, Column, Integer, Float, String, Boolean
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-def load_data():
-    if not os.path.exists(CSV_FILE):
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    DATABASE_URL = "sqlite:///./local.db"
+
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+class EmployeeMetric(Base):
+    __tablename__ = "employee_metrics"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, index=True)
+    easy_tasks = Column(Integer)
+    medium_tasks = Column(Integer)
+    hard_tasks = Column(Integer)
+    context_switches = Column(Integer)
+    work_hours = Column(Float)
+    after_hours_work = Column(Float)
+    weekend_work = Column(Boolean)
+    last_updated = Column(String)
+
+Base.metadata.create_all(bind=engine)
+
+def load_data_from_db():
+    try:
+        return pd.read_sql("SELECT * FROM employee_metrics", con=engine)
+    except Exception:
         return pd.DataFrame(columns=[
             "employee_id", "easy_tasks", "medium_tasks", "hard_tasks",
             "context_switches", "work_hours", "after_hours_work", "weekend_work", "last_updated"
         ])
-    return pd.read_csv(CSV_FILE)
 
-def save_data(df):
-    df.to_csv(CSV_FILE, index=False)
+def save_record_to_db(record):
+    session = SessionLocal()
+    try:
+        # Check if entry exists for this employee and date
+        existing = session.query(EmployeeMetric).filter(
+            EmployeeMetric.employee_id == record["employee_id"],
+            EmployeeMetric.last_updated == record["last_updated"]
+        ).first()
+        if existing:
+            existing.easy_tasks = record["easy_tasks"]
+            existing.medium_tasks = record["medium_tasks"]
+            existing.hard_tasks = record["hard_tasks"]
+            existing.context_switches = record["context_switches"]
+            existing.work_hours = record["work_hours"]
+            existing.after_hours_work = record["after_hours_work"]
+            existing.weekend_work = record["weekend_work"]
+        else:
+            new_metric = EmployeeMetric(
+                employee_id=record["employee_id"],
+                easy_tasks=record["easy_tasks"],
+                medium_tasks=record["medium_tasks"],
+                hard_tasks=record["hard_tasks"],
+                context_switches=record["context_switches"],
+                work_hours=record["work_hours"],
+                after_hours_work=record["after_hours_work"],
+                weekend_work=record["weekend_work"],
+                last_updated=record["last_updated"]
+            )
+            session.add(new_metric)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
 
 class EmployeeSubmission(BaseModel):
     employee_id: int
@@ -69,7 +131,20 @@ async def upload_file(file: UploadFile = File(...)):
         if "last_updated" not in df.columns:
             df["last_updated"] = datetime.now().strftime("%Y-%m-%d")
             
-        save_data(df)
+        for _, row in df.iterrows():
+            record = {
+                "employee_id": int(row["employee_id"]),
+                "easy_tasks": int(row["easy_tasks"]),
+                "medium_tasks": int(row["medium_tasks"]),
+                "hard_tasks": int(row["hard_tasks"]),
+                "context_switches": int(row["context_switches"]),
+                "work_hours": float(row["work_hours"]),
+                "after_hours_work": float(row["after_hours_work"]),
+                "weekend_work": bool(row["weekend_work"]),
+                "last_updated": str(row["last_updated"])
+            }
+            save_record_to_db(record)
+            
         return {"message": "File uploaded and saved successfully", "records": len(df)}
     except HTTPException:
         raise
@@ -156,27 +231,17 @@ def calculate_burnout_risk(emp):
 
 @app.post("/submit")
 async def submit_daily_data(submission: EmployeeSubmission):
-    df = load_data()
-    
     new_record = submission.dict()
     new_record["last_updated"] = datetime.now().strftime("%Y-%m-%d")
     
-    # Check if entry for this employee and date already exists, if so update it
-    mask = (df["employee_id"] == submission.employee_id) & (df["last_updated"] == new_record["last_updated"])
-    if mask.any():
-        for col, val in new_record.items():
-            df.loc[mask, col] = val
-    else:
-        df = pd.concat([df, pd.DataFrame([new_record])], ignore_index=True)
-    
-    save_data(df)
+    save_record_to_db(new_record)
     
     analysis = calculate_burnout_risk(new_record)
     return analysis
 
 @app.get("/latest")
 def get_latest_data():
-    df = load_data()
+    df = load_data_from_db()
     if df.empty:
         return []
     
@@ -196,7 +261,7 @@ def analyze_all():
 
 @app.get("/analyze/{employee_id}")
 def analyze_one(employee_id: int):
-    df = load_data()
+    df = load_data_from_db()
     emp_data = df[df["employee_id"] == employee_id]
     if emp_data.empty:
         raise HTTPException(status_code=404, detail="Employee not found")
@@ -205,6 +270,7 @@ def analyze_one(employee_id: int):
     emp_data["last_updated"] = pd.to_datetime(emp_data["last_updated"])
     latest = emp_data.sort_values("last_updated", ascending=False).iloc[0]
     return calculate_burnout_risk(latest)
+
 
 # LangChain Agent Setup
 @tool
