@@ -2,11 +2,15 @@
 
 🚀 **Burnout Risk Analyzer** is an enterprise-grade AI-assisted workforce analytics system built to detect early signs of employee burnout using daily task-level work patterns. 
 
-This project was built as a hackathon submission for the **Xebia Hackathon** conducted at **Takshila University**.
+This project was built as a hackathon submission for the **Xe-Conclave 2026, 24-Hour National Level Hackathon** conducted by **Xebia** at **Takshashila University** on **29th & 30th April 2026**.
+
+## 📜 Hackathon Certificate of Participation
+![Xe-Conclave 2026 Hackathon Certificate](./certificate.jpg)
 
 ---
 
 ## 📌 Project Overview (Xebia Hackathon Topic #16)
+
 
 ### 🎯 Objective
 Organizations lack visibility into how task overload, context switching, and work pattern irregularities contribute to early employee burnout. Existing productivity tools track activity but do not analyze task-level behavioral signals to detect burnout risk in advance.
