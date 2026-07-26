@@ -1,4 +1,4 @@
-# Task-Level Employee Burn Risk Detection System
+# Task-Level Employee Burnout Risk Detection System
 
 🚀 **Burnout Risk Analyzer** is an enterprise-grade AI-assisted workforce analytics system built to detect early signs of employee burnout using daily task-level work patterns. 
 
@@ -6,18 +6,16 @@ This project was built as a hackathon submission for the **Xebia Hackathon** con
 
 ---
 
-## 📌 The Problem We Are Solving
+## 📌 Project Overview (Xebia Hackathon Topic #16)
 
-In modern, fast-paced work environments, employee burnout is a leading cause of decreased productivity, high turnover rates, and severe mental fatigue. Traditional HR feedback loops (like monthly or yearly surveys) are reactive and often capture burnout too late.
+### 🎯 Objective
+Organizations lack visibility into how task overload, context switching, and work pattern irregularities contribute to early employee burnout. Existing productivity tools track activity but do not analyze task-level behavioral signals to detect burnout risk in advance.
 
-**Our Solution:** 
-We detect burnout risk **proactively** at the task level by monitoring behavioral signals like:
-- High ratios of complex/hard tasks.
-- Extreme context switching (jumping between too many tasks).
-- Long working hours and after-hours activity.
-- Weekend work.
+### 📝 Description
+The system monitors work data such as task load, frequency of context switching, work duration, and productivity patterns. Using analytics and pattern recognition, it identifies indicators of overload, fragmented work, and irregular work habits that may lead to burnout. It explains the contributing factors behind the risk and provides insights for both managers and employees to take preventive actions before burnout occurs.
 
-By combining deterministic rule-based risk scoring with an **AI Explanation Layer** (powered by LangChain and Groq), the system provides managers with clear explanations and highly-actionable, personalized recommendations to improve employee well-being.
+### 🏆 Expected Outcomes
+A task-level burnout risk detection system that analyzes workload intensity, task fragmentation, and productivity patterns to generate early burnout risk indicators and explain contributing factors for managers and employees.
 
 ---
 
