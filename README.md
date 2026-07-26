@@ -1,148 +1,98 @@
-🚀 Burnout Risk Analyzer – High Level Technical Design (HLT)
-1. 📌 Overview
-The Burnout Risk Analyzer is a web-based system that detects early signs of employee burnout using task-level work patterns. It combines rule-based scoring, weighted workload modeling, and LLM-powered explanations to provide actionable insights.
-________________________________________
-2. 🎯 Objectives
-•	Detect burnout risk early using behavioral signals
-•	Provide explainable insights (not just scores)
-•	Enable managers and employees to take preventive action
-•	Demonstrate AI-assisted decision-making in workforce analytics
-________________________________________
-3. 🏗️ System Architecture
-Components:
-1.	Frontend (UI Layer)
-o	Displays employee risk data
-o	Shows workload, risk level, reasons, recommendations
-o	Allows selection of employees
-2.	Backend (FastAPI)
-o	Handles API requests
-o	Loads and processes CSV data
-o	Computes workload and risk scores
-3.	Data Layer
-o	CSV file (data.csv)
-o	Simulates enterprise task management data
-4.	AI Layer (LangChain + LLM)
-o	Wraps backend logic as a tool
-o	Enables natural language queries
-o	Generates explanations and suggestions
-________________________________________
-3.A 🧭 High-Level Architecture Flow
-[ User / Browser ]
-          |
-          v
-[ Frontend UI (React/HTML) ]
-          |
-          v
-[ FastAPI Backend ]
-   |        |        \
-   |        |         \
-   v        v          v
-[ CSV ]  [ Risk Engine ]  [ LangChain Tool ]
-             |                |
-             v                v
-        [ Scoring Logic ]  [ LLM (Optional) ]
-             |                |
-             \_______  ______/
-                     v
-               [ Response JSON ]
-                     |
-                     v
-              [ Frontend Display ]
-Explanation:
-•	The frontend sends requests to the backend APIs.
-•	The backend reads data from CSV and runs the burnout scoring logic.
-•	The LangChain tool optionally invokes an LLM for explanations.
-•	The system merges deterministic results + AI insights.
-•	Final response is returned to the frontend for visualization.
-________________________________________
-3.1 🧰 Libraries & Tools Used (and Why) 🧰 Libraries & Tools Used (and Why)
-Backend Framework
-•	FastAPI
-o	Chosen for: high performance, async support, automatic API documentation (Swagger)
-o	Why over Flask/Django: faster to build APIs, built-in validation using Pydantic, better for hackathons
-Data Processing
-•	pandas
-o	Used for: reading CSV, data manipulation, iteration
-o	Why over native Python: cleaner syntax, faster operations, easier handling of tabular data
-AI / LLM Layer
-•	LangChain
-o	Used for: creating tools, agents, and integrating LLM with backend logic
-o	Why: simplifies connecting LLM with custom functions (tool calling)
-•	LangChain Core
-o	Used for: prompt templates, message handling
-o	Why: modular architecture and better separation of concerns
-•	LangChain Groq
-o	Used for: connecting to Groq models
-o	Why: clean integration with minimal setup
-•	GROQ(llama-3.1-8b-instant)
-o	Used for: generating explanations and recommendations
-o	Why: strong reasoning capability, fast inference, cost-effective for demos
-Data Storage
-•	CSV File
-o	Used for: storing employee data
-o	Why over database: lightweight, no setup required, ideal for prototype/demo
-Frontend (Optional)
-•	React / HTML + JS
-o	Used for: UI dashboard
-o	Why: quick UI development, easy API integration
-________________________________________
-4. 🔄 Data Flow
-1.	User interacts with frontend
-2.	Frontend sends request to backend API
-3.	Backend processes CSV and calculates risk
-4.	Optional AI layer enhances response
-5.	Results returned to frontend
-________________________________________
-5. 📊 Data Model
-Each employee record contains:
-•	employee_id
-•	easy_tasks
-•	medium_tasks
-•	hard_tasks
-•	context_switches
-•	work_hours
-•	after_hours_work
-•	weekend_work
-________________________________________
-6. 🧮 Core Logic
-Workload Score = (easy × 1) + (medium × 2) + (hard × 3)
-Risk is calculated based on workload, context switching, working hours, and behavioral patterns.
-________________________________________
-7. 🧠 AI Integration
-LangChain agent calls a tool to analyze employee data and uses LLM to generate explanations.
-•	Prompts Used to achieve this:
-•	Core System Prompt (The Agent Persona)
-This is the foundational prompt injected into the Lang Chain React (Reason and Act) Agent running on the Groq LLM (Llama 3). It establishes the persona, strict constraints, and the expected output format.
-Text:
-You are an expert HR assistant specializing in employee burnout risk analysis.
-•	INSTRUCTIONS 
-•	1. If the query mentions a specific employee ID (e.g., #1 or Employee 1), you MUST use the 'analyze_employee' tool immediately to fetch their specific data.
-•	2. Focus EXCLUSIVELY on the employee requested. Do not provide a general team summary unless specifically asked.
-•	3. Based on the tool's output, provide exactly 5 HIGHLY SPECIFIC and ACTIONABLE recommendations tailored to that employee's risk factors.
-•	4. Do not invent data. Use only the tool output.
-•	5. Format your response professionally with a numbered list for recommendations.
-________________________________________
-8. 🔌 API Design
-•	GET /analyze_all
-•	GET /analyze/{id}
-________________________________________
-9. 💻 Frontend Design
-Dashboard showing employee risk levels and detailed analysis.
-________________________________________
-10. 🛡️ Assumptions & Constraints
-•	Synthetic data
-•	No real integrations
-•	Demo-focused system
-________________________________________
-11. ⚡ Non-Functional Requirements
-•	Fast
-•	Scalable
-•	Modular
-________________________________________
-12. 🚀 Future Enhancements
-•	Real integrations
-•	ML-based prediction
-•	Advanced dashboards
-________________________________________
-13. 🏁 Conclusion
-A practical system combining data processing, rule-based logic, and AI explanations for burnout detection.
+# Task-Level Employee Burn Risk Detection System
+
+🚀 **Burnout Risk Analyzer** is an enterprise-grade AI-assisted workforce analytics system built to detect early signs of employee burnout using daily task-level work patterns. 
+
+This project was built as a hackathon submission for the **ZBA Hackathon** conducted at **Takshila University**.
+
+---
+
+## 📌 The Problem We Are Solving
+
+In modern, fast-paced work environments, employee burnout is a leading cause of decreased productivity, high turnover rates, and severe mental fatigue. Traditional HR feedback loops (like monthly or yearly surveys) are reactive and often capture burnout too late.
+
+**Our Solution:** 
+We detect burnout risk **proactively** at the task level by monitoring behavioral signals like:
+- High ratios of complex/hard tasks.
+- Extreme context switching (jumping between too many tasks).
+- Long working hours and after-hours activity.
+- Weekend work.
+
+By combining deterministic rule-based risk scoring with an **AI Explanation Layer** (powered by LangChain and Groq), the system provides managers with clear explanations and highly-actionable, personalized recommendations to improve employee well-being.
+
+---
+
+## 🏗️ System Architecture & Folder Structure
+
+The project is structured as a decoupled monorepo containing a FastAPI backend and a React/Vite frontend:
+
+```text
+Task-Level-Employee-Burn-Risk-Detection-System/
+├── backend/
+│   ├── Dockerfile             # Builds the FastAPI container
+│   ├── main.py                # FastAPI backend endpoints, SQLAlchemy models, and AI agent logic
+│   ├── requirements.txt       # Python dependencies (SQLAlchemy, psycopg2-binary, LangChain, etc.)
+│   └── .env                   # Local environment variables (ignored by Git)
+├── frontend/
+│   ├── src/                   # React source code (UI pages, metrics dashboard, chat interface)
+│   ├── Dockerfile             # Builds the React/Vite development server container
+│   ├── package.json           # Frontend dependencies
+│   ├── tailwind.config.js     # Tailwind CSS styling configurations
+│   └── index.html             # HTML entry point
+├── docker-compose.yml         # Orchestrates backend & frontend container execution
+└── README.md                  # Project documentation
+```
+
+---
+
+## ⚙️ Technologies & Libraries Used
+
+### Backend
+* **FastAPI:** High performance, asynchronous framework for building APIs.
+* **SQLAlchemy & PostgreSQL:** Database layer (compatible with free cloud DBs like Supabase or Neon Tech) to store employee metrics.
+* **LangChain & LangGraph:** Builds the AI tool-calling agent to fetch metrics and reason over burnout risk factors.
+* **Groq (Llama 3.1 8B):** Generates natural language explanations and HR recommendations.
+
+### Frontend
+* **React (Vite):** Fast frontend library and dev server.
+* **Recharts:** Interactive data visualization of team risk distribution.
+* **Lucide React:** Modern clean icon set.
+
+---
+
+## 🚀 Setup & Installation Guide
+
+### Prerequisites
+Make sure you have [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed on your machine.
+
+### 1. Database Setup
+The system uses a PostgreSQL database. You can provision a free Postgres database in seconds using [Supabase](https://supabase.com/):
+1. Sign up for a free Supabase account and create a project.
+2. Go to **Project Settings** -> **Database** -> **Connection string** (URI mode) and copy the URL.
+3. Replace the `[YOUR-PASSWORD]` placeholder in the URL with your project's database password.
+
+### 2. Configure Environment Variables
+Create a file named `.env` in the `backend/` folder:
+
+**Path:** `backend/.env`
+```env
+DATABASE_URL=postgresql://postgres.yourref:yourpassword@aws-0-us-east-1.pooler.supabase.com:6543/postgres
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+### 3. Build and Run the App with Docker
+
+Run the following command from the root directory to build and spin up the containers:
+```bash
+docker-compose up --build
+```
+
+* **Frontend Dashboard:** Available at `http://localhost:5173`
+* **Backend API Docs (Swagger):** Available at `http://localhost:8000/docs`
+
+---
+
+## 🔌 API Endpoints
+* `POST /submit` - Submit daily employee metrics.
+* `GET /latest` - Retrieve the latest processed metrics for all employees.
+* `GET /analyze/{employee_id}` - Get burnout assessment for a specific employee.
+* `POST /chat` - Interact with the AI assistant for custom HR insights.
