@@ -1,7 +1,8 @@
-version: '3.8'
+name: task-level-employee-burn-risk-detection-system
 
 services:
   backend:
+    container_name: burnout-risk-detection-backend
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -13,6 +14,7 @@ services:
       - PORT=8000
 
   frontend:
+    container_name: burnout-risk-detection-frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -20,3 +22,4 @@ services:
       - "5173:5173"
     depends_on:
       - backend
+
