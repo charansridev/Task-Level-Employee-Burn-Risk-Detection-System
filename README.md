@@ -2,7 +2,7 @@
 
 🚀 **Burnout Risk Analyzer** is an enterprise-grade AI-assisted workforce analytics system built to detect early signs of employee burnout using daily task-level work patterns. 
 
-This project was built as a hackathon submission for the **ZBA Hackathon** conducted at **Takshila University**.
+This project was built as a hackathon submission for the **Xebia Hackathon** conducted at **Takshila University**.
 
 ---
 
