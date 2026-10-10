@@ -308,7 +308,7 @@ async def chat_with_agent(request: ChatRequest):
 4. Do not invent data. Use only the tool output.
 5. Format your response professionally with a numbered list for recommendations."""
 
-        llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0, api_key=groq_api_key)
+        llm = ChatGroq(model="qwen/qwen3.8-27b", temperature=0, api_key=groq_api_key)
         tools = [analyze_employee]
         
         agent_executor = create_react_agent(llm, tools)
