@@ -61,6 +61,35 @@ Task-Level-Employee-Burn-Risk-Detection-System/
 
 ---
 
+## 🧠 Burnout Risk Scoring Engine
+
+The backend implements an automated, objective heuristic scoring engine to assess employee burnout risk from daily task metrics:
+
+### 1. Workload & Complexity Weighting
+* **Workload Score**: Weighted task complexity metric:
+  $$\text{Workload} = (\text{Easy Tasks} \times 1) + (\text{Medium Tasks} \times 2) + (\text{Hard Tasks} \times 3)$$
+* **Hard Task Ratio**: Proportion of cognitively demanding work:
+  $$\text{Hard Task Ratio} = \frac{\text{Hard Tasks}}{\text{Total Tasks}}$$
+
+### 2. Heuristic Risk Scoring Rules
+Risk points accumulate based on behavioral and workload signals:
+
+| Factor | Condition | Risk Points | Flagged Reason | Actionable Recommendation |
+| :--- | :--- | :--- | :--- | :--- |
+| **High Workload** | Workload Score $> 40$ | $+20$ | High overall workload | Redistribute tasks to reduce workload |
+| **Cognitive Overload** | Hard Task Ratio $> 40\%$ | $+15$ | High ratio of hard tasks | Assign more easy/medium tasks to balance cognitive load |
+| **Task Fragmentation** | Context Switches $> 15$ | $+20$ | Frequent context switches | Encourage focused work blocks and reduce interruptions |
+| **Long Hours** | Work Hours $> 10$ hrs/day | $+20$ | Long working hours | Ensure the employee sticks to standard working hours |
+| **Off-Hours Strain** | After-Hours Work $> 2$ hrs | $+15$ | Significant after-hours work | Discourage working after standard hours |
+| **Rest Deprivation** | Weekend Work $=$ `True` | $+10$ | Working on weekends | Protect weekends for rest and recovery |
+
+### 3. Risk Classification Levels
+* 🟢 **Low Risk (0 – 29)**: Sustainable workload and healthy work habits.
+* 🟡 **Medium Risk (30 – 69)**: Emerging strain; requires managerial review and balance.
+* 🔴 **High Risk (70 – 100)**: Critical burnout indicators; urgent workload redistribution needed.
+
+---
+
 ## 🚀 Setup & Installation Guide
 
 ### Prerequisites
